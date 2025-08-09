@@ -1,0 +1,53 @@
+
+
+
+
+
+# Load libraries
+library(Seurat)
+library(loupeR)
+
+# Load your object (adjust the path)
+merged_obj <- readRDS("C:/scRNAseq/Shiny_App_Project/outputs/merged_scRNA-Seq_Final.rds")
+
+# Ensure PCA exists
+if (!"pca" %in% Reductions(merged_obj)) {
+  stop("PCA not found. Run RunPCA() before continuing.")
+}
+
+# Step 1: Run KMeans clustering
+for (k in 2:10) {
+  cname <- paste0("kmeans_", k)
+  kmeans_result <- kmeans(Embeddings(merged_obj, "pca"), centers = k)$cluster
+  vec <- factor(kmeans_result)
+  names(vec) <- colnames(merged_obj)
+  merged_obj@meta.data[[cname]] <- vec
+}
+
+# Step 2: Construct misc$clusters list
+cluster_list <- list(
+  active_cluster  = "seurat_clusters",
+  seurat_clusters = merged_obj$seurat_clusters,
+  orig.ident      = merged_obj$orig.ident,
+  graph_based     = merged_obj$seurat_clusters
+)
+
+for (k in 2:10) {
+  cname <- paste0("kmeans_", k)
+  vec <- merged_obj@meta.data[[cname]]
+  vec <- factor(vec)
+  names(vec) <- colnames(merged_obj)
+  cluster_list[[cname]] <- vec
+}
+
+# Assign to misc
+merged_obj@misc$clusters <- cluster_list
+
+# Step 3: Export Loupe file
+create_loupe_from_seurat(
+  obj = merged_obj,
+  output_dir = "C:/scRNAseq/Shiny_App_Project/outputs",
+  output_name = "merged_kmeans_test_console",
+  dedup_clusters = FALSE,
+  force = TRUE
+)

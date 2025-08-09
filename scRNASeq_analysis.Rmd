@@ -1,0 +1,486 @@
+---
+title: "analysis_1"
+author: "Bimal"
+date: "2025-05-13"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Installing packaging and libraries of Seurat
+
+```{r}
+
+install.packages("Seurat")
+
+library(Seurat)
+
+```
+# For "SCT1" folders
+
+# Defining the paths to SCT1, Reading the data and then Creating the Seurat Object (the first 3 lines of the code). Then Viewing the basic inof of it (no line 4 and 5 ) 
+
+```{r}
+
+
+sct1_path  <- "C:/scRNAseq/Shiny_App_Project/scRNASeq/SCT1"
+
+sct1_data <- Read10X(data.dir = sct1_path)
+
+sct1 <- CreateSeuratObject(counts = sct1_data, project = "SCT1")
+
+sct1
+
+head(sct1@meta.data)
+
+```
+#Step for Normalize and Process in the following: 
+
+#Normalize the data
+# Find variable features
+# Scale the data
+# PCA
+# UMAP and clustering
+
+```{r}
+
+#sct1 <- NormalizeData(sct1)
+
+# sct1 <- FindVariableFeatures(sct1)
+# 
+# sct1 <- ScaleData(sct1)
+# 
+# sct1 <- RunPCA(sct1)
+# 
+# sct1 <- FindNeighbors(sct1, dims = 1:30)
+# 
+# sct1 <- FindClusters(sct1, resolution = 0.7)
+# 
+# sct1 <- RunUMAP(sct1, dims = 1:10)
+
+
+
+
+
+```
+# Step for Plot UMAP and Clusters 
+
+```{r}
+
+# DimPlot(sct1_obj, reduction = "umap", label = TRUE)
+
+```
+# Repeating the same thing for "SCT2" folders
+
+# Defining the paths to SCT1, Reading the data and then Creating the Seurat Object (the first 3 lines of the code). Then Viewing the basic inof of it (no line 4 and 5 ) 
+
+```{r}
+
+sct2_path  <- "C:/scRNAseq/Shiny_App_Project/scRNASeq/SCT2"
+
+sct2_data <- Read10X(data.dir = sct2_path)
+
+sct2 <- CreateSeuratObject(counts = sct2_data, project = "SCT2")
+
+sct2
+
+head(sct2@meta.data)
+
+```
+# For SCT2 folders
+
+#Step for Normalize and Process in the following: 
+
+#Normalize the data
+# Find variable features
+# Scale the data
+# PCA
+# UMAP and clustering
+
+
+```{r}
+
+
+# Loading raw cell Ranger matrices for SCT1 and SCT2
+
+# step 1: 
+
+sct1_counts <- Read10X(data.dir = "C:/scRNAseq/Shiny_App_Project/scRNASeq/SCT1")
+sct2_counts <- Read10X(data.dir = "C:/scRNAseq/Shiny_App_Project/scRNASeq/SCT2")
+
+# Step 2: Build RNA assays explicitly
+sct1_assay <- CreateAssayObject(counts = sct1_counts)
+sct2_assay <- CreateAssayObject(counts = sct2_counts)
+
+# Step 3: Create Seurat objects with assays
+sct1_obj <- CreateSeuratObject(counts = sct1_assay, assay = "RNA", project = "SCT1")
+
+sct2_obj <- CreateSeuratObject(counts = sct2_assay, assay = "RNA", project = "SCT2")
+
+
+
+# Add mitochondrial percentage
+#sct1_obj[["percent.mt"]] <- PercentageFeatureSet(sct1_obj, pattern = "^MT-")
+#sct2_obj[["percent.mt"]] <- PercentageFeatureSet(sct2_obj, pattern = "^MT-")
+
+
+# Filter low-quality cells for SCT1 and SCT2 (QC step)
+#sct1_obj <- subset(sct1_obj, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
+#sct2_obj <- subset(sct2_obj, subset = nFeature_RNA > 200 & nFeature_RNA < 2500 & percent.mt < 5)
+
+
+
+
+
+#Step for Normalize and Process in the following: 
+
+#Normalize the data
+# Find variable features
+# Scale the data
+# PCA
+# UMAP and clustering
+
+
+sct1_obj <- NormalizeData(sct1_obj)
+
+sct1_obj <- FindVariableFeatures(sct1_obj)
+ 
+sct1_obj <- ScaleData(sct1_obj)
+ 
+sct1_obj <- RunPCA(sct1_obj)
+ 
+sct1_obj <- FindNeighbors(sct1_obj, dims = 1:30)
+ 
+sct1_obj <- FindClusters(sct1_obj, resolution = .7)
+ 
+sct1_obj <- RunUMAP(sct1_obj, dims = 1:30)
+
+
+
+
+sct2_obj <- NormalizeData(sct2_obj)
+ 
+sct2_obj <- FindVariableFeatures(sct2_obj)
+ 
+sct2_obj <- ScaleData(sct2_obj)
+ 
+sct2_obj <- RunPCA(sct2_obj)
+ 
+sct2_obj <- FindNeighbors(sct2_obj, dims = 1:30)
+ 
+sct2_obj <- FindClusters(sct2_obj, resolution = 0.5)
+ 
+sct2_obj <- RunUMAP(sct2_obj, dims = 1:30)
+
+
+
+DimPlot(sct1_obj, reduction = "umap", label = TRUE)
+
+
+DimPlot(sct2_obj, reduction = "umap", label = TRUE)
+
+# individually cluster SCT1 and SCT2 before combined/ merged
+
+# For SCT1 
+
+# sct1_obj <- FindNeighbors(sct1_obj, dims = 1:30)
+
+# sct1_obj <- FindClusters(sct1_obj, resolution = 0.7)
+
+# For SCT2
+
+# sct2_obj <- FindNeighbors(sct2_obj, dims =1:30)
+
+# sct2_obj <- FindClusters(sct2_obj, resolution = 0.5)
+
+
+
+
+
+
+
+# Step 4: Merge SCT1 and SCT2
+counts1 <- GetAssayData(sct1_obj, assay = "RNA", layer = "data")
+counts2 <- GetAssayData(sct2_obj, assay = "RNA", layer = "data")
+sct1_obj <- SetAssayData(sct1_obj, assay = "RNA", layer = "counts", new.data = counts1)
+sct2_obj <- SetAssayData(sct2_obj, assay = "RNA", layer = "counts", new.data = counts2)
+
+combined <- merge(
+  x = sct1_obj,
+  y = sct2_obj,
+  add.cell.ids = c("SCT1", "SCT2"),
+  project = "MergedSCT",
+  merge.data = TRUE
+)
+
+# Step 5: Add back unified 'counts' layer after merge
+#counts.SCT1 <- GetAssayData(combined, assay = "RNA", layer = "counts.SCT1")
+#counts.SCT2 <- GetAssayData(combined, assay = "RNA", layer = "counts.SCT2")
+#combined_counts <- cbind(counts.SCT1, counts.SCT2)
+
+#combined <- SetAssayData(
+ # object = combined,
+  #assay = "RNA",
+  #layer = "counts",
+  #new.data = combined_counts
+#)
+
+# Step 6: Confirm counts now exists
+"counts" %in% Layers(combined)  # should return TRUE
+
+
+
+# Step 7: Normalize, cluster, etc.
+combined <- NormalizeData(combined)
+combined <- FindVariableFeatures(combined)
+combined <- ScaleData(combined)
+combined <- RunPCA(combined)
+combined <- FindNeighbors(combined, dims = 1:30)
+combined <- FindClusters(combined, resolution = .7)
+combined <- RunUMAP(combined, dims = 1:30)
+combined <- RunTSNE(combined, dims = 1:30)
+
+
+# sct2 <- NormalizeData(sct2)
+# 
+# sct2 <- FindVariableFeatures(sct2)
+# 
+# sct2 <- ScaleData(sct2)
+# 
+# sct2 <- RunPCA(sct2)
+# 
+# sct2 <- FindNeighbors(sct2, dims = 1:30)
+# 
+# sct2 <- FindClusters(sct2, resolution = 0.5)
+# 
+# sct2 <- RunUMAP(sct2, dims = 1:10)
+
+
+```
+# Step for Plot UMAP and Clusters for "SCT2"
+
+
+```{r}
+
+# DimPlot(sct2, reduction = "umap", label = TRUE)
+
+
+```
+
+# Step 8: Save final Seurat objects
+
+```{r}
+
+#saveRDS(sct1_obj, file = "C:/scRNAseq/Shiny_App_Project/SCT1_filtered.rds")
+
+
+# saveRDS(sct2_obj, file = "C:/scRNAseq/Shiny_App_Project/SCT2_filtered.rds")
+
+# saveRDS(combined, file = "C:/scRNAseq/Shiny_App_Project/combined_scRNASeq.rds")
+
+
+# combined <- merge(sct1, y = sct2, add.cell.ids = c("SCT1", "SCT2"), project = "MergedSCT")
+
+```
+
+# Merging or Combining for final processing and LoupeR compatibility 
+
+```{r}
+# combined <- FindVariableFeatures(combined)
+# 
+# combined <- ScaleData(combined)
+# 
+# combined <- RunPCA(combined)
+# 
+# combined <- FindNeighbors(combined, dims = 1:10)
+# 
+# combined <- FindClusters(combined, resolution = 0.5)
+# 
+# combined <- RunUMAP(combined,dims = 1:10)
+# 
+# combined <- RunTSNE(combined, dims = 1:10)
+# 
+# DimPlot(combined, group.by = "seurat_clusters") # Seurat clustering not sample origin
+# 
+# combined <- NormalizeData(combined)
+```
+
+
+# Register cluster identities for LoupeR
+
+```{r}
+
+# Convert cluster identities to a *factor* vector with names
+
+
+# Final correction: Ensure proper list structure for LoupeR
+# cluster_ids <- Idents(combined)
+# cluster_vector <- as.character(cluster_ids)  # remove factor structure
+# names(cluster_vector) <- colnames(combined)  # assign cell barcodes
+# combined@misc$clusters <- list("RNA_snn_res.0.5" = cluster_vector)
+
+
+
+
+
+#Convert cluster identities to a factor with cell names
+cluster_ids <- Idents(combined)
+cluster_vector <- setNames(as.character(cluster_ids), colnames(combined))
+
+# ✅ Store in @misc$clusters using exact format required by LoupeR
+combined@misc$clusters <- list(
+  "RNA_snn_res.0.5" = cluster_vector
+)
+
+
+
+# ✅ Add RNA assay using SCT counts
+combined[["RNA"]] <- CreateAssayObject(
+  counts = GetAssayData(combined, assay = "RNA", slot = "counts")
+)
+
+
+# saveRDS(sct1_obj, file = "C:/scRNAseq/Shiny_App_Project/SCT1_filtered.rds")
+
+# saveRDS(sct2_obj, file = "C:/scRNAseq/Shiny_App_Project/SCT2_filtered.rds")
+
+# saveRDS(combined, file = "C:/scRNAseq/Shiny_App_Project/combined_scRNASeq.rds")
+
+
+
+
+saveRDS(sct1_obj, file = "outputs/SCT1_filtered.rds")
+
+saveRDS(sct2_obj, file = "outputs/SCT2_filtered.rds")
+
+saveRDS(combined, file = "outputs/combined_scRNASeq.rds")
+
+
+
+
+```
+# Save for Shiny and LoupeR
+
+```{r}
+
+# saveRDS(combined, file = "C:/scRNA seq/Shiny_App_Project/merged_seurat_FIXED_FINAL.rds")
+        
+
+
+
+```
+
+# Step for Finding the Neighbors and Clusters
+
+```{r}
+
+#combined <- FindNeighbors(combined, dims = 1:10)
+
+#combined <- FindClusters(combined, resolution = 0.5) # here we can adjust resolution later
+
+```
+# Steping for Visualizing Clusters
+
+```{r}
+
+
+# DimPlot(combined, reduction = "umap", label = TRUE, group.by = "seurat_clusters")
+
+# DimPlot(combined, reduction = "tsne", label = TRUE, group.by = "seurat_clusters")
+
+```
+
+# I donot need this following line for Shiny. Just for checking  
+
+```{r}
+
+# table(Idents(combined))
+
+```
+# I donot need these following line for Shiny. Just for checking
+
+# Checking the errors here 
+```{r}
+
+# DefaultAssay(combined)
+
+# table(Idents(combined))
+
+```
+
+
+```{r}
+
+# combined <- JoinLayers(combined)
+
+
+```
+
+
+```{r}
+
+markers <- FindAllMarkers(combined, only.pos = TRUE,min.pct = 0.25, logfc.threshold = 0.25)
+
+head(markers)
+
+```
+# Seeing the Top markers (1st line)
+# Seeing the Top markers per clusters(3rd line)
+
+# There are some errors in top marksers after running that line
+```{r}
+
+
+
+library(dplyr)
+
+top_markers <- markers %>% group_by(cluster) %>% top_n(5, avg_log2FC)
+
+head(top_markers)
+
+top10 <- markers %>% group_by(cluster) %>% top_n(n=1, wt = avg_log2FC)
+
+DoHeatmap(combined, features = top10$gene)+NoLegend()
+
+# unique(top_markers$gene)
+
+FeaturePlot(combined, features = c("DIO2", "MS4A4A", "GZMH")) # these 3 genes are based on my top markers and heat map
+
+```
+
+# Saving Seurat object for Shiny app 
+
+# combined and saved
+```{r}
+#saveRDS(combined, file = "combined_scRNASeq.rds")
+
+#combined <- readRDS("combined_scRNASeq.rds")
+```
+
+# Step 7: Export .cloupe files for Loupe Browser
+
+
+```{r}
+
+library(LoupeR)
+
+export_loupe(obj = sct1_obj, file = "output_SCT1.cloupe")
+
+export_loupe(obj = sct2_obj, file = "output_SCT2.cloupe")
+
+export_loupe(obj = combined, file = "output_combined.cloupe")
+
+
+
+```
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

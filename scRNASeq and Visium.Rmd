@@ -1,0 +1,52 @@
+---
+title: "scRNASeq and Visium"
+author: "Bimal"
+date: "2025-05-16"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Integration of scRNASeq and Visium(Deconvolution)
+
+
+```{r }
+
+# Step 1: Install required core packages (non-interactive)
+install.packages("remotes")
+install.packages("BiocManager")
+
+# Step 2: Set up a custom writeable library path (optional, if permissions are an issue)
+dir.create("C:/R_libs", showWarnings = FALSE)
+.libPaths("C:/R_libs")
+
+# Step 3: Downgrade Bioconductor version (non-interactive, avoid freezing)
+BiocManager::install(version = "3.19", ask = FALSE)
+
+# Step 4: Install all Bioconductor dependencies for SPOTlight
+BiocManager::install(
+  c("SingleCellExperiment", "scater", "scran", "SummarizedExperiment"),
+  ask = FALSE, force = TRUE
+)
+
+# Step 5: Install SPOTlight from GitHub
+remotes::install_github("MarcElosua/SPOTlight", dependencies = TRUE, upgrade = "never")
+
+
+library(SPOTlight)
+
+
+
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

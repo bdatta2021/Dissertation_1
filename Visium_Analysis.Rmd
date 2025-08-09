@@ -1,0 +1,308 @@
+---
+title: "Visium_Analysis"
+author: "Bimal"
+date: "2025-05-14"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Installing packages
+
+```{r}
+
+install.packages("Seurat")
+
+install.packages("SeuratData")
+
+install.packages("remotes")
+
+remotes::install_github("satijalab/seurat-wrappers")
+
+install.packages("patchwork")
+
+remotes::install_github("mojaveazure/seurat-disk")
+
+```
+
+# Loading Libraries
+
+```{r}
+library(Seurat)
+
+library(patchwork)
+
+library(ggplot2)
+
+library(dplyr)
+
+library(SeuratDisk)
+
+library(dplyr)
+
+```
+
+# 
+```{r}
+base_dir <- "C:/scRNAseq/Shiny_App_Project/Visium"
+
+sample_dirs <- list.dirs(base_dir, full.names = TRUE, recursive = FALSE)
+
+visium_list <- list()
+
+for (sample_path in sample_dirs) {
+  sample_name <- basename(sample_path)
+  message("Processing: ", sample_name)
+
+  # Try-catch block to skip failed samples
+  tryCatch({
+    # Load sample
+visium <- Load10X_Spatial(data.dir = sample_path)
+
+# ✅ QC Step — before SCTransform
+visium[["percent.mt"]] <- PercentageFeatureSet(visium, pattern = "^MT-")
+
+
+
+VlnPlot(visium, features = c("nCount_Spatial", "nFeature_Spatial", "percent.mt"), ncol = 3)
+
+# Recommended filtering thresholds
+visium <- subset(visium,
+                 subset = nCount_Spatial > 500 &
+                          nFeature_Spatial > 200 &
+                          percent.mt < 20)
+
+ 
+# Normalize
+visium <- SCTransform(visium, assay = "Spatial", verbose = FALSE)
+
+    visium <- RunPCA(visium, assay = "SCT", verbose = FALSE)
+    visium <- FindNeighbors(visium, dims = 1:30)
+    visium <- FindClusters(visium, resolution = 0.5)
+
+    visium <- RunTSNE(visium, dims = 1:30)
+
+    visium <- RunUMAP(visium, dims = 1:30)
+
+    # Save to list
+    visium_list[[sample_name]] <- visium
+  }, error = function(e) {
+    message("❌ Skipping ", sample_name, " due to error: ", e$message)
+  })
+}
+```
+
+
+```{r}
+
+# Make sure output folder exists
+output_dir <- file.path("C:/scRNAseq/Shiny_App_Project/Visium", "Visium_RDS")
+dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+
+# Save each processed Visium object to its own .rds
+for (sample_name in names(visium_list)) {
+  obj      <- visium_list[[sample_name]]
+  out_file <- file.path(output_dir, paste0(sample_name, ".rds"))
+  saveRDS(obj, out_file)
+  message("✔️ Saved: ", out_file)
+}
+
+
+```
+
+# Saving only clean samples
+
+
+```{r}
+
+saveRDS(visium_list, file = "visium_all_clean_samples.rds")
+
+```
+
+# Step 3: Merge clean samples and run clustering on combined object
+
+```{r}
+
+# Merge all clean samples
+
+combined_visium <- merge(visium_list[[1]], y = visium_list[2:length(visium_list)], 
+                         add.cell.ids = names(visium_list))
+
+# Run standard workflow on combined object
+
+combined_visium <- NormalizeData(combined_visium)
+
+combined_visium <- FindVariableFeatures(combined_visium)
+
+combined_visium <- ScaleData(combined_visium)
+
+combined_visium <- RunPCA(combined_visium)
+
+
+combined_visium <- FindNeighbors(combined_visium, dims = 1:30)
+
+combined_visium <- FindClusters(combined_visium, resolution = 0.5)
+
+combined_visium <- RunTSNE(combined_visium, dims = 1:30)
+
+combined_visium <- RunUMAP(combined_visium, dims = 1:30)
+
+
+
+```
+
+# Step_4 Finding marker genes
+
+```{r}
+# Fix library size inconsistency for DE testing by running the immediate next line 
+
+combined_visium <- PrepSCTFindMarkers(combined_visium)
+
+# Now running the marker gene detection
+
+markers_visium <- FindAllMarkers(combined_visium, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
+
+```
+
+# Step 5 : Save the final combined object
+
+```{r}
+
+saveRDS(combined_visium, file = "combined_Visium.rds")
+
+```
+
+# Visualize by DimPlot
+
+```{r}
+
+DimPlot(combined_visium, reduction = "umap", label = TRUE)
+
+```
+#  Step 6: Spatial Visualization
+
+```{r}
+
+SpatialDimPlot(combined_visium, label = TRUE)
+
+```
+
+Step 7: Explore Metadata & Cluster Composition
+
+```{r}
+
+head(combined_visium@meta.data)
+
+table(combined_visium$seurat_clusters)
+
+
+
+```
+
+# Step 8: Finding top markers and viewing them
+```{r}
+
+top_markers <- markers_visium %>% group_by(cluster) %>% top_n(5, avg_log2FC)
+
+View(top_markers)
+
+```
+
+# Cell Type Annotation (for paper if i need)
+
+```{r}
+library(plyr)  # Required for mapvalues()
+
+
+
+combined_visium$celltype <- mapvalues(combined_visium$seurat_clusters,
+  from = c("0",   "1",       "2",        "3",         "4",       "5",         "6",      "7",        "8",         "9",         "10",          "11",       "12",       "13",     "14",        "15",        "16"),
+  to   = c("T cells", "B cells", "Monocytes", "NK cells", "Dendritic", "Plasma", "Muscle", "Mitochondria", "HeatShock", "Keratin+", "Inflammatory", "IFN-high", "B/plasma", "Fibroblast", "LMO2-like", "Stressed", "EEF2-high")
+)
+
+
+table(combined_visium$seurat_clusters)
+```
+
+
+#Saving the annotated Seurat object
+
+```{r}
+
+saveRDS(combined_visium, file = "combined_visium_annotated.rds")
+
+```
+
+#Visualize annotated cell types
+
+```{r}
+
+DimPlot(combined_visium, group.by = "celltype", label = TRUE)
+
+SpatialDimPlot(combined_visium, group.by = "celltype", label = TRUE)
+
+```
+
+#Check cluster composition by sample
+
+```{r}
+
+table(combined_visium$orig.ident, combined_visium$celltype)
+
+```
+
+#Export marker gene table
+
+```{r}
+
+write.csv(markers_visium, "Visium_marker_genes.csv", row.names = FALSE)
+
+```
+
+# All of them: 
+
+#UMAP with annotation
+
+#Spatial plots for key markers
+
+#DotPlots or Heatmaps for top markers:
+
+```{r}
+
+DotPlot(combined_visium, features = unique(top_markers$gene), group.by = "celltype") + RotatedAxis()
+
+```
+
+# Step 7: Export .cloupe files for Loupe Browser
+
+
+
+```{r}
+
+library(loupeR)
+
+# export_loupe(obj = sct1_obj, file = "output_SCT1.cloupe")
+
+# export_loupe(obj = sct2_obj, file = "output_SCT2.cloupe")
+
+export_loupe(obj = combined_visium, file = "output_combined_visium.cloupe")
+
+
+
+
+```
+
+
+
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
